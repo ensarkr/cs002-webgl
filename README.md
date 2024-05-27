@@ -36,7 +36,7 @@ Purpose is to write your name using webgl.
 - Working and accurate code.
 - Uniqueness of used primitives.
 - Correct and accurate use of transformations.
-- The clarity and elaboration of [documentation]("https://github.com/ensarkr/cs002-webgl/blob/main/rapor.md").
+- The clarity and elaboration of [documentation](https://github.com/ensarkr/cs002-webgl/blob/main/rapor.md).
 - If its in 3D, extra points.
 
 Time limit: 17 days
