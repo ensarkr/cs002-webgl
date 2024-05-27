@@ -99,8 +99,8 @@ input.addEventListener("input", (e) => {
   url.searchParams.set("type", encodeURIComponent(btoa(userText)));
   history.pushState(null, "", url);
 
-  // format user input writable format
-  // empty space are turned into '-'
+  // format user input to writable format
+  // empty spaces are turned into '-'
   const letterArray = userText
     .replaceAll("-", "")
     .replaceAll(" ", "-")
@@ -125,8 +125,8 @@ input.addEventListener("input", (e) => {
         : LETTER_DATA[currentLetter].maxWidth;
   }
 
-  // word vertices in (+x, -y, +z) space
-  // if we think 2D space one corner is exactly (0,0) and other corner is (x,-y)
+  // word vertices are in (+x, -y, +z) space
+  // if we think in 2D space one corner is exactly (0,0) and other corner is (x,-y)
   // so we shift on x axis by half of full width
   let startingPointX = -fullLettersWidth / 2;
 
@@ -192,13 +192,13 @@ const main = () => {
   attribute vec3 aVertexPosition;
   
   uniform mat4 uTransformationMatrix;
-  uniform mat4 uProjectionMatrix;
+  uniform mat4 uViewProjectionMatrix;
   uniform vec4 uColor;
 
   varying vec4 color;
 
   void main(void) {
-    gl_Position =  uProjectionMatrix * uTransformationMatrix * vec4(aVertexPosition.xyz, 1.0);
+    gl_Position =  uViewProjectionMatrix * uTransformationMatrix * vec4(aVertexPosition.xyz, 1.0);
     color = uColor;
   }
 `;
@@ -231,9 +231,9 @@ const main = () => {
         shaderProgram,
         "uTransformationMatrix"
       ) as number,
-      projectionMatrix: gl.getUniformLocation(
+      viewProjectionMatrix: gl.getUniformLocation(
         shaderProgram,
-        "uProjectionMatrix"
+        "uViewProjectionMatrix"
       ) as number,
       color: gl.getUniformLocation(shaderProgram, "uColor") as number,
     },
@@ -284,7 +284,7 @@ const main = () => {
     // calculate viewProjectionMatrix and set
     mat4.multiply(viewProjectionMatrix, projectionMatrix, viewMatrix);
     gl.uniformMatrix4fv(
-      programInfo.uniformLocations.projectionMatrix,
+      programInfo.uniformLocations.viewProjectionMatrix,
       false,
       viewProjectionMatrix
     );
@@ -466,7 +466,7 @@ type programInfoT = {
   };
   uniformLocations: {
     transformationMatrix: number;
-    projectionMatrix: number;
+    viewProjectionMatrix: number;
     color: number;
   };
 };
