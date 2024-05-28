@@ -1,14 +1,26 @@
 import { mat4, vec3 } from "gl-matrix";
 import { LETTER_DATA } from "./static/letterData";
+import { initiateProgram, loadShader } from "./gl";
+import { getRandomColor } from "./helper";
+import { drawLetter } from "./letter";
+import { letterInfoT, letterT } from "./typings";
 
 const GAP_BETWEEN_LETTERS = 15;
 const SPACEBAR_WIDTH = 40;
 const FOV = (15 * Math.PI) / 180; // in radians
 const NEAR_PLANE = 0.1;
 const FAR_PLANE = 1000;
-const CAMERA_FARNESS_FROM_CENTER = 10;
+const CAMERA_FARNESS_FROM_CENTER_Z_AXIS = 10;
 const CAMERA_ANGLE_INCREASE_PER_FRAME = 15;
 const DEVICE_PIXEL_RATIO = window.devicePixelRatio || 1;
+
+const button = document.querySelector("#button") as HTMLCanvasElement | null;
+
+if (button !== null) {
+  button.addEventListener("click", () => {
+    window.open("https://github.com/ensarkr/cs002-webgl", "_blank");
+  });
+}
 
 const input = document.querySelector("#textInput") as HTMLInputElement | null;
 
@@ -22,15 +34,27 @@ if (canvas === null) {
   throw "canvas not found";
 }
 
+let gl = canvas.getContext("webgl");
+
+if (gl === null) {
+  throw "webgl context not found";
+}
+
 let aspectRatio = 1;
 let fullLettersWidth = 0;
 let scalingFactor = 0.045;
+
+// rotation factor increased every time user writes unwritable letter
+// little easter egg
+let rotationFactor = 0;
+
+const projectionMatrix = mat4.create();
 
 const updateScalingFactor = () => {
   // FOV is the angle between top and bottom plane
   // find max height at origin
   const maxHeight =
-    (Math.pow(Math.pow(CAMERA_FARNESS_FROM_CENTER, 2) + 1, 1 / 2) /
+    (Math.pow(Math.pow(CAMERA_FARNESS_FROM_CENTER_Z_AXIS, 2) + 1, 1 / 2) /
       Math.tan((Math.PI - FOV) / 2)) *
     2;
   // its 40 because all letters have 40 height
@@ -46,14 +70,6 @@ const updateScalingFactor = () => {
     Math.min(widthScaling, heightScaling) * (1 - paddingPercentage);
 };
 
-const projectionMatrix = mat4.create();
-
-let gl = canvas.getContext("webgl");
-
-if (gl === null) {
-  throw "webgl context not found";
-}
-
 const setCanvasSize = () => {
   // set pixels and aspect ratio
   canvas.width = canvas.clientWidth * DEVICE_PIXEL_RATIO;
@@ -61,39 +77,18 @@ const setCanvasSize = () => {
   aspectRatio = canvas.width / canvas.height;
   updateScalingFactor();
   mat4.perspective(projectionMatrix, FOV, aspectRatio, NEAR_PLANE, FAR_PLANE);
+
   // where will canvas render
   gl.viewport(0, 0, canvas.width, canvas.height);
 };
 
 setCanvasSize();
 
-window.addEventListener("resize", () => {
-  setCanvasSize();
-});
-
-// random color that can be seen on black background
-const getRandomColor = (): [number, number, number, number] => {
-  while (true) {
-    const randomColor = Math.floor(Math.random() * 16777215)
-      .toString(16)
-      .padStart(6, "0");
-    const hexcolor = randomColor;
-    const r = parseInt(hexcolor.slice(0, 2), 16);
-    const g = parseInt(hexcolor.slice(2, 4), 16);
-    const b = parseInt(hexcolor.slice(4, 6), 16);
-    const yiq = (r * 299 + g * 587 + b * 114) / 1000;
-
-    if (yiq >= 128) return [r / 255, g / 255, b / 255, 1];
-  }
-};
+window.addEventListener("resize", setCanvasSize);
 
 const currentLetters: (letterInfoT | { letter: "-" })[] = [];
 
-// rotation factor increased every time user writes unwritable letter
-// little easter egg
-let rotationFactor = 0;
-
-input.addEventListener("input", (e) => {
+const onUserInput = (e: Event) => {
   rotationFactor = 0;
   const userText = (e.target as HTMLInputElement).value;
 
@@ -106,7 +101,7 @@ input.addEventListener("input", (e) => {
   // format user input to writable format
   // empty spaces are turned into '-'
   const letterArray = userText
-    .replaceAll("-", "")
+    .replaceAll("-", "+")
     .replaceAll(" ", "-")
     .toUpperCase()
     .split("")
@@ -159,22 +154,28 @@ input.addEventListener("input", (e) => {
   }
 
   updateScalingFactor();
-});
+};
 
-// written texts are kept in url queries to be able to send anyone
-const urlParams = new URLSearchParams(window.location.search);
-const queryType = urlParams.get("type");
+input.addEventListener("input", onUserInput);
 
-// read the query if it exist
-if (queryType !== null && queryType.length !== 0) {
-  input.value = atob(decodeURIComponent(queryType));
-  // dispatch event to render text
-  input.dispatchEvent(new Event("input", {}));
-} else {
-  input.value = "ensar kara";
-  input.dispatchEvent(new Event("input", {}));
-  input.value = "";
-}
+const inputStartingLetters = () => {
+  // written texts are kept in url queries to be able to send anyone
+  const urlParams = new URLSearchParams(window.location.search);
+  const queryType = urlParams.get("type");
+
+  // read the query if it exist
+  if (queryType !== null && queryType.length !== 0) {
+    input.value = atob(decodeURIComponent(queryType));
+    // dispatch event to render text
+    input.dispatchEvent(new Event("input", {}));
+  } else {
+    input.value = "ensar kara";
+    input.dispatchEvent(new Event("input", {}));
+    input.value = "";
+  }
+};
+
+inputStartingLetters();
 
 const main = () => {
   // shaders run on the gpu
@@ -221,12 +222,17 @@ const main = () => {
 `;
 
   // compile shaders and create a program
-  const vertexShader = loadShader(gl.VERTEX_SHADER, vertexShaderSource);
-  const fragmentShader = loadShader(gl.FRAGMENT_SHADER, fragmentShaderSource);
-  const shaderProgram = initiateProgram(vertexShader, fragmentShader);
+  const vertexShader = loadShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
+  const fragmentShader = loadShader(
+    gl,
+    gl.FRAGMENT_SHADER,
+    fragmentShaderSource
+  );
+  const shaderProgram = initiateProgram(gl, vertexShader, fragmentShader);
 
   // program info for ease of access
   const programInfo = {
+    gl,
     program: shaderProgram,
     attribLocations: {
       vertexPosition: gl.getAttribLocation(shaderProgram, "aVertexPosition"),
@@ -272,8 +278,8 @@ const main = () => {
       (deltaTime * CAMERA_ANGLE_INCREASE_PER_FRAME * Math.PI) / 180;
 
     // find camera position on x,z axises
-    const cameraX = CAMERA_FARNESS_FROM_CENTER * Math.sin(cameraAngle);
-    const cameraZ = CAMERA_FARNESS_FROM_CENTER * Math.cos(cameraAngle);
+    const cameraX = CAMERA_FARNESS_FROM_CENTER_Z_AXIS * Math.sin(cameraAngle);
+    const cameraZ = CAMERA_FARNESS_FROM_CENTER_Z_AXIS * Math.cos(cameraAngle);
 
     const viewMatrix = mat4.create();
 
@@ -316,205 +322,4 @@ const main = () => {
   requestAnimationFrame(render);
 };
 
-// compile and load
-const loadShader = (type: number, shaderSource: string) => {
-  const shader = gl.createShader(type);
-
-  if (shader === null) throw "Shader not created!";
-
-  gl.shaderSource(shader, shaderSource);
-
-  gl.compileShader(shader);
-
-  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-    throw "Shader not compiled!";
-  }
-
-  return shader;
-};
-
-const initiateProgram = (
-  vertexShader: WebGLShader,
-  fragmentShader: WebGLShader
-) => {
-  // A shader program is a container that links together the vertex and fragment shaders
-  const shaderProgram = gl.createProgram();
-
-  if (shaderProgram === null) throw "Program not created!";
-
-  gl.attachShader(shaderProgram, vertexShader);
-  gl.attachShader(shaderProgram, fragmentShader);
-
-  // This line links the attached vertex and fragment shaders together into a complete shader program. During the linking process,
-  // WebGL checks to ensure that the vertex and fragment shaders are compatible with each other.
-  gl.linkProgram(shaderProgram);
-
-  if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
-    throw "Program not linked!";
-  }
-
-  return shaderProgram;
-};
-
-const createAndBindBuffer = (vertices: number[]) => {
-  // create buffer in the gpu
-  // buffer is only a storage in the gpu
-  // until its bound its only a placeholder
-  // you can create multiple
-  const buffer = gl.createBuffer();
-
-  // bind our buffer to gpu array buffer
-  // only one at a time when
-  // when we bind another buffer
-  // first buffer still stays in the gpu
-  // and can be accessed by binding again
-  // we bind to do operation on it
-  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-
-  // load our vertices to our created buffer
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
-
-  if (buffer === null) throw "Buffer not created!";
-
-  return buffer;
-};
-
-const setBufferAttribute = (vertexPosition: number, buffer: WebGLBuffer) => {
-  const numComponents = 3; // there is 3 axis
-  const type = gl.FLOAT;
-  const normalize = false;
-  const stride = numComponents * Float32Array.BYTES_PER_ELEMENT;
-  const offset = 0; // no offset
-
-  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-
-  // The vertexAttribPointer function in WebGL is used to specify the data format of vertex attributes and bind them to vertex buffer objects (VBOs).
-  // It tells WebGL how to interpret the data stored in the VBOs when rendering geometry.
-  gl.vertexAttribPointer(
-    vertexPosition,
-    numComponents,
-    type,
-    normalize,
-    stride,
-    offset
-  );
-  gl.enableVertexAttribArray(vertexPosition);
-};
-
-const drawLetter = (
-  programInfo: programInfoT,
-  letterInfo: letterInfoT,
-  scale: number,
-  rotation: number
-) => {
-  const { vertices } = LETTER_DATA[letterInfo.letter];
-
-  const letterVerticesBuffer = createAndBindBuffer(vertices);
-
-  setBufferAttribute(
-    programInfo.attribLocations.vertexPosition,
-    letterVerticesBuffer
-  );
-
-  const transformationMatrix = mat4.create();
-
-  // apply transformations on reverse order of what we want
-  mat4.scale(transformationMatrix, transformationMatrix, [scale, scale, scale]);
-
-  // rotation is increased when user enter unwritable letters
-  mat4.rotateY(
-    transformationMatrix,
-    transformationMatrix,
-    (rotation * Math.PI * 2) / 3
-  );
-
-  mat4.rotateZ(
-    transformationMatrix,
-    transformationMatrix,
-    (rotation * Math.PI * 1) / 3
-  );
-
-  mat4.rotateX(
-    transformationMatrix,
-    transformationMatrix,
-    (rotation * Math.PI * 6) / 3
-  );
-
-  mat4.translate(transformationMatrix, transformationMatrix, [
-    letterInfo.translateX,
-    // y is 20 because height of letters are 40 and they are between 0 and -40 on y axis
-    20,
-    // z is -5 because z-length of letters are 10 and they are between 0 and 10 on z axis
-    -5,
-  ]);
-
-  gl.uniformMatrix4fv(
-    programInfo.uniformLocations.transformationMatrix,
-    false,
-    transformationMatrix
-  );
-
-  // set our random color
-  gl.uniform4fv(programInfo.uniformLocations.color, letterInfo.color);
-
-  const offset = 0;
-  const vertexCount = vertices.length / 3;
-  gl.drawArrays(gl.TRIANGLES, offset, vertexCount);
-};
-
 main();
-
-type programInfoT = {
-  program: WebGLProgram;
-  attribLocations: {
-    vertexPosition: number;
-  };
-  uniformLocations: {
-    transformationMatrix: number;
-    viewProjectionMatrix: number;
-    color: number;
-  };
-};
-
-// all writable letters
-export type letterT =
-  | "A"
-  | "B"
-  | "C"
-  | "D"
-  | "E"
-  | "F"
-  | "G"
-  | "H"
-  | "I"
-  | "J"
-  | "K"
-  | "L"
-  | "M"
-  | "N"
-  | "O"
-  | "P"
-  | "Q"
-  | "R"
-  | "S"
-  | "T"
-  | "U"
-  | "V"
-  | "W"
-  | "X"
-  | "Y"
-  | "Z";
-
-type letterInfoT = {
-  letter: letterT;
-  color: [number, number, number, number];
-  translateX: number;
-};
-
-const button = document.querySelector("#button") as HTMLCanvasElement | null;
-
-if (button !== null) {
-  button.addEventListener("click", () => {
-    window.open("https://github.com/ensarkr/cs002-webgl", "_blank");
-  });
-}

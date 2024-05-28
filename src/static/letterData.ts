@@ -1,4 +1,4 @@
-import { letterT } from '../main'; 
+import { letterT } from '../typings'; 
 
 const LETTER_DATA = {
   "A": {

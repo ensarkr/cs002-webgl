@@ -2,7 +2,7 @@
 
 
 ### veri kaynaklari
-- `vertex kaynağı:` Vertexler ve genişlikleri [alphabet stl dosyalarından](https://www.thingiverse.com/thing:15198) custom kodla çıkarıldı. Bu  veriler letterDatas adlı dosyada tutuluyor.
+- `vertex kaynağı:` Harflerin vertexleri ve genişlikleri [alphabet stl dosyalarından](https://www.thingiverse.com/thing:15198) custom kodla çıkarıldı. Bu  veriler letterDatas adlı dosyada tutuluyor.
 - `color kaynağı:` Renkler siyah arkaplanda görülebilcek şekilde rastgele oluşturuldu
 
 ### shaderlar
@@ -132,9 +132,11 @@ Bu aşamada her bir verteximiz aynı aşamadan geçer.
 
 #### fragment shader aşaması
 
-Bu aşamada primitivlerin içinde bulunan her bir pixelde aynı aşamadan geçer.
+Bu aşamada primitivlerin içinde bulunan her bir pixel aynı aşamadan geçer.
 
 1. Vertexlerden gelen renkler ile gradient bir renk oluşturur.
+2. Hesaplanan renk gl_FragColor adına eşitlenir.
+
 
 
 
