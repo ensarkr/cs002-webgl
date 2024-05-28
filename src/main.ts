@@ -6,7 +6,7 @@ const SPACEBAR_WIDTH = 40;
 const FOV = (15 * Math.PI) / 180; // in radians
 const NEAR_PLANE = 0.1;
 const FAR_PLANE = 1000;
-const CAMERA_FARNESS_FROM_CENTER = 25;
+const CAMERA_FARNESS_FROM_CENTER = 10;
 const CAMERA_ANGLE_INCREASE_PER_FRAME = 15;
 const DEVICE_PIXEL_RATIO = window.devicePixelRatio || 1;
 
@@ -33,13 +33,17 @@ const updateScalingFactor = () => {
     (Math.pow(Math.pow(CAMERA_FARNESS_FROM_CENTER, 2) + 1, 1 / 2) /
       Math.tan((Math.PI - FOV) / 2)) *
     2;
+  // its 40 because all letters have 40 height
+  const heightScaling = maxHeight / 40;
 
   // find max width
   const maxWidth = maxHeight * aspectRatio;
+  const widthScaling = maxWidth / fullLettersWidth;
 
-  // 0.9 is for padding
-  // 1 / 20 exist cause if user writes only 1 letter it overflows
-  scalingFactor = Math.min((maxWidth / fullLettersWidth) * 0.9, 1 / 20);
+  const paddingPercentage = 0.1;
+
+  scalingFactor =
+    Math.min(widthScaling, heightScaling) * (1 - paddingPercentage);
 };
 
 const projectionMatrix = mat4.create();
@@ -115,7 +119,8 @@ input.addEventListener("input", (e) => {
     }) as (letterT | "-")[];
 
   // add all lengths together
-  fullLettersWidth = (letterArray.length - 1) * GAP_BETWEEN_LETTERS;
+  fullLettersWidth =
+    (letterArray.filter((e) => e !== "-").length - 1) * GAP_BETWEEN_LETTERS;
   for (let i = 0; i < letterArray.length; i++) {
     const currentLetter = letterArray[i];
 
