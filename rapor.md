@@ -51,7 +51,7 @@ Bu matrixin amacı primitivleri 2 boyutlu ekranda perspektif kullanarak 3 boyutl
     ASPECT_RATIO, // genişlik bölü uzunluk
     NEAR_PLANE, // görülebilecek en yakın z indexi
     FAR_PLANE // görülebilecek en uzak z indexi
-    );
+  );
 ```
 ![projection matrix](https://i.sstatic.net/G4vP8.png)
 
@@ -66,20 +66,20 @@ Normalde webgl originden -z ye bakar. Bu matrixi kullanarak bakış kameramızı
     [CAMERA_X, CAMERA_Y, CAMERA_Z], // kamera pozisyonu
     [TARGET_X, TARGET_Y, TARGET_Z], // nereye bakıyoruz
     [0, 1, 0], // yukarı vektorü
-    );
+  );
 ```
 ![view matrix](https://miro.medium.com/v2/resize:fit:1400/1*GMLVIbbWXGE291FTG10toQ.png)
 
 #### transformationMatrix 
 
-Amacı vertex poziyonlarını transfrom etmektir. 
+Amacı vertex poziyonlarını transform etmektir. 
 
 ``` 
   mat4.scale(
     transformationMatrix, 
     transformationMatrix, 
     [SCALE_X, SCALE_Y, SCALE_Z] // büyütme vektörü
-    );
+  );
 
   mat4.rotateZ(
     transformationMatrix,
@@ -91,7 +91,7 @@ Amacı vertex poziyonlarını transfrom etmektir.
     transformationMatrix, 
     transformationMatrix, 
     [TRANSLATE_X, TRANSLATE_Y, TRANSLATE_Z] // translate vektörü
-    );
+  );
 ```
 İşlemlerin doğru sonuçlanabilmesi için çarpma sırasını istediğimizin tam tersi şekline yapmalıyız.
 
@@ -138,9 +138,11 @@ Bu aşamada primitivlerin içinde bulunan her bir pixel aynı aşamadan geçer.
 2. Hesaplanan renk gl_FragColor adına eşitlenir.
 
 
-
-
-
+### kaynaklar
+- [MDN webgl](https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Tutorial)
+- [matrix transformations](https://www.youtube.com/watch?v=Cb4aoihvh-o&list=PLTd6ceoshprfZs1VIzGHDt-MYgVewC5tc&index=13)
+- [webgl playlist](https://www.youtube.com/watch?v=y2UsQB3WSvo&list=PLjcVFFANLS5w6Qbj_1ziwT2LUHAwgZO2D&index=3)
+- [perspective projection](https://www.youtube.com/watch?v=U0_ONQQ5ZNM)
 
 
 
